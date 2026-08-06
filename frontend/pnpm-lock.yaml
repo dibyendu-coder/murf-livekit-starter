@@ -23,6 +23,9 @@ importers:
       '@radix-ui/react-dialog':
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@19.1.9(@types/react@19.1.12))(@types/react@19.1.12)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      '@radix-ui/react-dismissable-layer':
+        specifier: ^1.1.11
+        version: 1.1.11(@types/react-dom@19.1.9(@types/react@19.1.12))(@types/react@19.1.12)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       '@radix-ui/react-dropdown-menu':
         specifier: ^2.1.16
         version: 2.1.16(@types/react-dom@19.1.9(@types/react@19.1.12))(@types/react@19.1.12)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
@@ -56,6 +59,9 @@ importers:
       '@radix-ui/react-use-controllable-state':
         specifier: ^1.2.2
         version: 1.2.2(@types/react@19.1.12)(react@19.1.1)
+      '@radix-ui/react-visually-hidden':
+        specifier: ^1.2.11
+        version: 1.2.11(@types/react-dom@19.1.9(@types/react@19.1.12))(@types/react@19.1.12)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       '@rive-app/react-webgl2':
         specifier: ^4.26.1
         version: 4.26.1(react@19.1.1)
@@ -119,6 +125,12 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.1.1(react@19.1.1)
+      remark-cjk-friendly:
+        specifier: ^2.3.1
+        version: 2.3.1(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(unified@11.0.5)
+      remark-cjk-friendly-gfm-strikethrough:
+        specifier: ^2.3.1
+        version: 2.3.1(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(unified@11.0.5)
       shiki:
         specifier: ^3.21.0
         version: 3.21.0
@@ -763,6 +775,15 @@ packages:
       '@types/react':
         optional: true
 
+  '@radix-ui/react-compose-refs@1.1.5':
+    resolution: {integrity: sha512-+48PbAAbq3didjJxa+OaWY2ZwgAKsNiRGyeHKszblZMQ+kcpd9pAaT11cMkGEie0vsOi3QdeTE6d5Fe3Gn61kA==}
+    peerDependencies:
+      '@types/react': '*'
+      react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+
   '@radix-ui/react-context-menu@2.2.16':
     resolution: {integrity: sha512-O8morBEW+HsVG28gYDZPTrT9UUovQUlJue5YO836tiTJhuIWBm/zQHc7j388sHWtdH/xUZurK9olD2+pcqx5ww==}
     peerDependencies:
@@ -1029,6 +1050,19 @@ packages:
       '@types/react-dom':
         optional: true
 
+  '@radix-ui/react-primitive@2.1.10':
+    resolution: {integrity: sha512-MucOnzh6hR5mid6VpkbglRAMYMjKLqRnGBbjXkzjK52fuQDd1qbkx78a5P40mkcnVXJdEVxm26E9OPAiUq7nBg==}
+    peerDependencies:
+      '@types/react': '*'
+      '@types/react-dom': '*'
+      react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
+      react-dom: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      '@types/react-dom':
+        optional: true
+
   '@radix-ui/react-primitive@2.1.3':
     resolution: {integrity: sha512-m9gTwRkhy2lvCPe6QJp4d3G1TYEUHn/FzJUtq9MjH46an1wJU+GdoGC5VLof8RX8Ft/DlpshApkhswDLZzHIcQ==}
     peerDependencies:
@@ -1183,6 +1217,15 @@ packages:
 
   '@radix-ui/react-slot@1.2.4':
     resolution: {integrity: sha512-Jl+bCv8HxKnlTLVrcDE8zTMJ09R9/ukw4qBs/oZClOfoQk/cOTbDn+NceXfV7j09YPVQUryJPHurafcSg6EVKA==}
+    peerDependencies:
+      '@types/react': '*'
+      react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+
+  '@radix-ui/react-slot@1.3.3':
+    resolution: {integrity: sha512-qx7oqnYbxnK9kYI9m317qmFmEgo6ywqWvbTogdj7cL9p3/yx4M48p7Rnw5z3H890cL/ow/EeWJsuTykeZVXP5Q==}
     peerDependencies:
       '@types/react': '*'
       react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
@@ -1360,6 +1403,19 @@ packages:
       react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
     peerDependenciesMeta:
       '@types/react':
+        optional: true
+
+  '@radix-ui/react-visually-hidden@1.2.11':
+    resolution: {integrity: sha512-NFS86RYYZb4/exihaESBGOpMJFz8MGLAfu3mOBSGByVnVPC9JPASfYubxd/8KbkQK0sYAv8lVQDEQukDX/qXvQ==}
+    peerDependencies:
+      '@types/react': '*'
+      '@types/react-dom': '*'
+      react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
+      react-dom: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      '@types/react-dom':
         optional: true
 
   '@radix-ui/react-visually-hidden@1.2.3':
@@ -3146,6 +3202,24 @@ packages:
   mdast-util-to-hast@13.2.1:
     resolution: {integrity: sha512-cctsq2wp5vTsLIcaymblUriiTcZd0CwWtCbLvrOzYCDZoWyMNV8sZ7krj09FSnsiJi3WVsHLM4k6Dq/yaPyCXA==}
 
+  mdast-util-to-markdown-cjk-friendly-gfm-strikethrough@1.0.0:
+    resolution: {integrity: sha512-1ePVfB4P/vz3xSsm6H3D32r6VYGErxclnuLLFK02/2ReF+UdEKm7caulK6Vm0LBIp5gPRtB2Z1OYDznCkX3k2w==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@types/mdast': '*'
+    peerDependenciesMeta:
+      '@types/mdast':
+        optional: true
+
+  mdast-util-to-markdown-cjk-friendly@1.0.0:
+    resolution: {integrity: sha512-BoaAm8mlJ+LAYz0Qs532Y3ciTuQYgBUPZcSFbvC/ZKmEMAKgulw84YvQK1gI34t/vL2euSfuaWlqczkTBgamkw==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@types/mdast': '*'
+    peerDependenciesMeta:
+      '@types/mdast':
+        optional: true
+
   mdast-util-to-markdown@2.1.2:
     resolution: {integrity: sha512-xj68wMTvGXVOKonmog6LwyJKrYXZPvlwabaryTjLh9LuvovB/KAH+kvi8Gjj+7rJjsFi23nkUxRQv1KqSroMqA==}
 
@@ -3175,6 +3249,16 @@ packages:
       micromark-util-types:
         optional: true
 
+  micromark-extension-cjk-friendly-gfm-strikethrough@2.0.1:
+    resolution: {integrity: sha512-wVC0zwjJNqQeX+bb07YTPu/CvSAyCTafyYb7sMhX1r62/Lw5M/df3JyYaANyp8g15c1ypJRFSsookTqA1IDsUg==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      micromark: ^4.0.0
+      micromark-util-types: ^2.0.0
+    peerDependenciesMeta:
+      micromark-util-types:
+        optional: true
+
   micromark-extension-cjk-friendly-util@2.1.1:
     resolution: {integrity: sha512-egs6+12JU2yutskHY55FyR48ZiEcFOJFyk9rsiyIhcJ6IvWB6ABBqVrBw8IobqJTDZ/wdSr9eoXDPb5S2nW1bg==}
     engines: {node: '>=16'}
@@ -3184,9 +3268,28 @@ packages:
       micromark-util-types:
         optional: true
 
+  micromark-extension-cjk-friendly-util@3.0.1:
+    resolution: {integrity: sha512-GcbXqTTHOsiZHyF753oIddP/J2eH8j9zpyQPhkof6B2JNxfEJabnQqxbCgzJNuNes0Y2jTNJ3LiYPSXr6eJA8w==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      micromark-util-types: '*'
+    peerDependenciesMeta:
+      micromark-util-types:
+        optional: true
+
   micromark-extension-cjk-friendly@1.2.3:
     resolution: {integrity: sha512-gRzVLUdjXBLX6zNPSnHGDoo+ZTp5zy+MZm0g3sv+3chPXY7l9gW+DnrcHcZh/jiPR6MjPKO4AEJNp4Aw6V9z5Q==}
     engines: {node: '>=16'}
+    peerDependencies:
+      micromark: ^4.0.0
+      micromark-util-types: ^2.0.0
+    peerDependenciesMeta:
+      micromark-util-types:
+        optional: true
+
+  micromark-extension-cjk-friendly@2.0.1:
+    resolution: {integrity: sha512-OkzoYVTL1ChbvQ8Cc1ayTIz7paFQz8iS9oIYmewncweUSwmWR+hkJF9spJ1lxB90XldJl26A1F4IkPOKS3bDXw==}
+    engines: {node: '>=18'}
     peerDependencies:
       micromark: ^4.0.0
       micromark-util-types: ^2.0.0
@@ -3683,9 +3786,29 @@ packages:
       '@types/mdast':
         optional: true
 
+  remark-cjk-friendly-gfm-strikethrough@2.3.1:
+    resolution: {integrity: sha512-JE3TGgouk/sy92SemNMEUhO5mNP4on04cmzOV3s3R5Dbk160ewmpM4tgPiinKKvoJ5UW2fTu7FOYsjVbusSA9w==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@types/mdast': ^4.0.0
+      unified: ^11.0.0
+    peerDependenciesMeta:
+      '@types/mdast':
+        optional: true
+
   remark-cjk-friendly@1.2.3:
     resolution: {integrity: sha512-UvAgxwlNk+l9Oqgl/9MWK2eWRS7zgBW/nXX9AthV7nd/3lNejF138E7Xbmk9Zs4WjTJGs721r7fAEc7tNFoH7g==}
     engines: {node: '>=16'}
+    peerDependencies:
+      '@types/mdast': ^4.0.0
+      unified: ^11.0.0
+    peerDependenciesMeta:
+      '@types/mdast':
+        optional: true
+
+  remark-cjk-friendly@2.3.1:
+    resolution: {integrity: sha512-f+pKZRxCRwNEGFBKNRAZAqU91GIK1SAo3ZyFHWRUgC9zcxRR0BXKd6YwqgSsxtW0rNpUDtONj7H5nje2WL3fcA==}
+    engines: {node: '>=18'}
     peerDependencies:
       '@types/mdast': ^4.0.0
       unified: ^11.0.0
@@ -4714,6 +4837,12 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.1.12
 
+  '@radix-ui/react-compose-refs@1.1.5(@types/react@19.1.12)(react@19.1.1)':
+    dependencies:
+      react: 19.1.1
+    optionalDependencies:
+      '@types/react': 19.1.12
+
   '@radix-ui/react-context-menu@2.2.16(@types/react-dom@19.1.9(@types/react@19.1.12))(@types/react@19.1.12)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
     dependencies:
       '@radix-ui/primitive': 1.1.3
@@ -5023,6 +5152,15 @@ snapshots:
       '@types/react': 19.1.12
       '@types/react-dom': 19.1.9(@types/react@19.1.12)
 
+  '@radix-ui/react-primitive@2.1.10(@types/react-dom@19.1.9(@types/react@19.1.12))(@types/react@19.1.12)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
+    dependencies:
+      '@radix-ui/react-slot': 1.3.3(@types/react@19.1.12)(react@19.1.1)
+      react: 19.1.1
+      react-dom: 19.1.1(react@19.1.1)
+    optionalDependencies:
+      '@types/react': 19.1.12
+      '@types/react-dom': 19.1.9(@types/react@19.1.12)
+
   '@radix-ui/react-primitive@2.1.3(@types/react-dom@19.1.9(@types/react@19.1.12))(@types/react@19.1.12)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
     dependencies:
       '@radix-ui/react-slot': 1.2.3(@types/react@19.1.12)(react@19.1.1)
@@ -5189,6 +5327,13 @@ snapshots:
   '@radix-ui/react-slot@1.2.4(@types/react@19.1.12)(react@19.1.1)':
     dependencies:
       '@radix-ui/react-compose-refs': 1.1.2(@types/react@19.1.12)(react@19.1.1)
+      react: 19.1.1
+    optionalDependencies:
+      '@types/react': 19.1.12
+
+  '@radix-ui/react-slot@1.3.3(@types/react@19.1.12)(react@19.1.1)':
+    dependencies:
+      '@radix-ui/react-compose-refs': 1.1.5(@types/react@19.1.12)(react@19.1.1)
       react: 19.1.1
     optionalDependencies:
       '@types/react': 19.1.12
@@ -5365,6 +5510,15 @@ snapshots:
       react: 19.1.1
     optionalDependencies:
       '@types/react': 19.1.12
+
+  '@radix-ui/react-visually-hidden@1.2.11(@types/react-dom@19.1.9(@types/react@19.1.12))(@types/react@19.1.12)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
+    dependencies:
+      '@radix-ui/react-primitive': 2.1.10(@types/react-dom@19.1.9(@types/react@19.1.12))(@types/react@19.1.12)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      react: 19.1.1
+      react-dom: 19.1.1(react@19.1.1)
+    optionalDependencies:
+      '@types/react': 19.1.12
+      '@types/react-dom': 19.1.9(@types/react@19.1.12)
 
   '@radix-ui/react-visually-hidden@1.2.3(@types/react-dom@19.1.9(@types/react@19.1.12))(@types/react@19.1.12)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
     dependencies:
@@ -7509,6 +7663,28 @@ snapshots:
       unist-util-visit: 5.0.0
       vfile: 6.0.3
 
+  mdast-util-to-markdown-cjk-friendly-gfm-strikethrough@1.0.0(@types/mdast@4.0.4)(micromark-util-types@2.0.2):
+    dependencies:
+      mdast-util-gfm-strikethrough: 2.0.0
+      mdast-util-to-markdown: 2.1.2
+      micromark-extension-cjk-friendly-util: 3.0.1(micromark-util-types@2.0.2)
+      micromark-util-symbol: 2.0.1
+    optionalDependencies:
+      '@types/mdast': 4.0.4
+    transitivePeerDependencies:
+      - micromark-util-types
+      - supports-color
+
+  mdast-util-to-markdown-cjk-friendly@1.0.0(@types/mdast@4.0.4)(micromark-util-types@2.0.2):
+    dependencies:
+      mdast-util-to-markdown: 2.1.2
+      micromark-extension-cjk-friendly-util: 3.0.1(micromark-util-types@2.0.2)
+      micromark-util-symbol: 2.0.1
+    optionalDependencies:
+      '@types/mdast': 4.0.4
+    transitivePeerDependencies:
+      - micromark-util-types
+
   mdast-util-to-markdown@2.1.2:
     dependencies:
       '@types/mdast': 4.0.4
@@ -7588,7 +7764,28 @@ snapshots:
     optionalDependencies:
       micromark-util-types: 2.0.2
 
+  micromark-extension-cjk-friendly-gfm-strikethrough@2.0.1(micromark-util-types@2.0.2)(micromark@4.0.2):
+    dependencies:
+      devlop: 1.1.0
+      get-east-asian-width: 1.4.0
+      micromark: 4.0.2
+      micromark-extension-cjk-friendly-util: 3.0.1(micromark-util-types@2.0.2)
+      micromark-util-character: 2.1.1
+      micromark-util-chunked: 2.0.1
+      micromark-util-resolve-all: 2.0.1
+      micromark-util-symbol: 2.0.1
+    optionalDependencies:
+      micromark-util-types: 2.0.2
+
   micromark-extension-cjk-friendly-util@2.1.1(micromark-util-types@2.0.2):
+    dependencies:
+      get-east-asian-width: 1.4.0
+      micromark-util-character: 2.1.1
+      micromark-util-symbol: 2.0.1
+    optionalDependencies:
+      micromark-util-types: 2.0.2
+
+  micromark-extension-cjk-friendly-util@3.0.1(micromark-util-types@2.0.2):
     dependencies:
       get-east-asian-width: 1.4.0
       micromark-util-character: 2.1.1
@@ -7601,6 +7798,17 @@ snapshots:
       devlop: 1.1.0
       micromark: 4.0.2
       micromark-extension-cjk-friendly-util: 2.1.1(micromark-util-types@2.0.2)
+      micromark-util-chunked: 2.0.1
+      micromark-util-resolve-all: 2.0.1
+      micromark-util-symbol: 2.0.1
+    optionalDependencies:
+      micromark-util-types: 2.0.2
+
+  micromark-extension-cjk-friendly@2.0.1(micromark-util-types@2.0.2)(micromark@4.0.2):
+    dependencies:
+      devlop: 1.1.0
+      micromark: 4.0.2
+      micromark-extension-cjk-friendly-util: 3.0.1(micromark-util-types@2.0.2)
       micromark-util-chunked: 2.0.1
       micromark-util-resolve-all: 2.0.1
       micromark-util-symbol: 2.0.1
@@ -8199,9 +8407,32 @@ snapshots:
       - micromark
       - micromark-util-types
 
+  remark-cjk-friendly-gfm-strikethrough@2.3.1(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(unified@11.0.5):
+    dependencies:
+      mdast-util-to-markdown-cjk-friendly-gfm-strikethrough: 1.0.0(@types/mdast@4.0.4)(micromark-util-types@2.0.2)
+      micromark-extension-cjk-friendly-gfm-strikethrough: 2.0.1(micromark-util-types@2.0.2)(micromark@4.0.2)
+      unified: 11.0.5
+    optionalDependencies:
+      '@types/mdast': 4.0.4
+    transitivePeerDependencies:
+      - micromark
+      - micromark-util-types
+      - supports-color
+
   remark-cjk-friendly@1.2.3(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(unified@11.0.5):
     dependencies:
       micromark-extension-cjk-friendly: 1.2.3(micromark-util-types@2.0.2)(micromark@4.0.2)
+      unified: 11.0.5
+    optionalDependencies:
+      '@types/mdast': 4.0.4
+    transitivePeerDependencies:
+      - micromark
+      - micromark-util-types
+
+  remark-cjk-friendly@2.3.1(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(unified@11.0.5):
+    dependencies:
+      mdast-util-to-markdown-cjk-friendly: 1.0.0(@types/mdast@4.0.4)(micromark-util-types@2.0.2)
+      micromark-extension-cjk-friendly: 2.0.1(micromark-util-types@2.0.2)(micromark@4.0.2)
       unified: 11.0.5
     optionalDependencies:
       '@types/mdast': 4.0.4

@@ -1,7 +1,7 @@
 import logging
 
 from dotenv import load_dotenv
-from livekit import rtc
+# `rtc` import removed — avoid depending on livekit.rtc symbols that may not be available
 from livekit.agents import (
     Agent,
     AgentServer,
@@ -22,7 +22,21 @@ load_dotenv(".env.local")
 
 # Change this prompt to change what your voice agent does.
 # See README.md for example prompts (customer support, language tutor, receptionist).
-SYSTEM_PROMPT = """You are a friendly and efficient customer support agent for a tech company. Help users with account issues, billing questions, and product troubleshooting. Be concise, empathetic, and solution-oriented. If you don't know something, say so honestly and offer to escalate. Your responses are concise and without complex formatting, emojis, or symbols."""
+SYSTEM_PROMPT = """You are a patient, encouraging spoken‑English tutor for children and adult learners. Your goal is to help users practice and improve their spoken English through short, interactive voice conversations.
+
+At the start of the session, ask the user their age and current English level (beginner, intermediate, advanced) and adapt all responses accordingly.
+
+Behavior rules:
+- For children (under 13): use very simple vocabulary, short sentences, gentle praise, and fun repetition exercises. Provide phonetic hints and short, playful prompts (e.g. "Repeat after me: I like apples."). Keep explanations brief and positive.
+- For adult learners: use natural conversational language, correct common mistakes gently, and offer optional expanded explanations and examples when asked.
+- Encourage the user to speak and repeat sentences. Offer short role‑play prompts and ask the user to respond.
+- When correcting, show a concise corrected sentence and a one‑line explanation (no long grammar lectures unless requested).
+- Provide practice exercises (repeat‑after‑me, minimal pairs, short Q&A). Use short dialogues to prompt speaking practice.
+- Keep most replies concise (1–2 sentences) but provide longer guidance on request.
+- Use an encouraging, non‑judgmental tone (e.g. "Good job!", "Try saying..."). Avoid emojis, complex formatting, or symbols.
+
+If you cannot answer a question, be honest and offer a simpler practice exercise instead. Always ask a follow‑up question to continue the spoken practice.
+"""
 
 
 class Assistant(Agent):
@@ -73,12 +87,12 @@ async def my_agent(ctx: JobContext):
         # A Large Language Model (LLM) is your agent's brain, processing user input and generating a response
         # See all available models at https://docs.livekit.io/agents/models/llm/
         llm=google.LLM(
-                model="gemini-2.5-flash",
+                model="gemini-3.5-flash",
             ),
         # Text-to-speech (TTS) is your agent's voice, turning the LLM's text into speech that the user can hear
         # See all available models as well as voice selections at https://docs.livekit.io/agents/models/tts/
         tts=murf.TTS(
-                voice="en-US-matthew", 
+                voice="en-IN-pooja", 
                 style="Conversation",
                 tokenizer=tokenize.basic.SentenceTokenizer(min_sentence_len=2),
                 text_pacing=True
@@ -116,12 +130,10 @@ async def my_agent(ctx: JobContext):
         room=ctx.room,
         room_options=room_io.RoomOptions(
             audio_input=room_io.AudioInputOptions(
-                noise_cancellation=lambda params: (
-                    noise_cancellation.BVCTelephony()
-                    if params.participant.kind
-                    == rtc.ParticipantKind.PARTICIPANT_KIND_SIP
-                    else noise_cancellation.BVC()
-                ),
+                # Use default BVC noise cancellation for all participants. Avoid
+                # importing `rtc.ParticipantKind` to stay compatible with
+                # different livekit package layouts.
+                noise_cancellation=lambda params: noise_cancellation.BVC(),
             ),
         ),
     )

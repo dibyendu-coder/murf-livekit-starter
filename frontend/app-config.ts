@@ -46,7 +46,7 @@ export const APP_CONFIG_DEFAULTS: AppConfig = {
   accent: '#6366F1',
   logoDark: '/murf-logo-dark.svg',
   accentDark: '#818cf8',
-  startButtonText: 'Start talking',
+  startButtonText: 'Allow mic',
 
   // optional: audio visualization configuration
   // audioVisualizerType: 'bar',

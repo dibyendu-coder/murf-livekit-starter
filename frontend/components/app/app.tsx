@@ -6,8 +6,8 @@ import { useSession } from '@livekit/components-react';
 import { WarningIcon } from '@phosphor-icons/react/dist/ssr';
 import type { AppConfig } from '@/app-config';
 import { AgentSessionProvider } from '@/components/agents-ui/agent-session-provider';
-import { StartAudioButton } from '@/components/agents-ui/start-audio-button';
 import { AutoEnableMic } from '@/components/agents-ui/auto-enable-mic';
+import { StartAudioButton } from '@/components/agents-ui/start-audio-button';
 import { ViewController } from '@/components/app/view-controller';
 import { Toaster } from '@/components/ui/sonner';
 import { useAgentErrors } from '@/hooks/useAgentErrors';
@@ -41,12 +41,12 @@ export function App({ appConfig }: AppProps) {
 
   return (
     <AgentSessionProvider session={session}>
-      <AutoEnableMic />
       <AppSetup />
+      {session.isConnected && <AutoEnableMic />}
       <main className="grid h-svh grid-cols-1 place-content-center">
         <ViewController appConfig={appConfig} />
       </main>
-      <StartAudioButton label="Start Audio" />
+      <StartAudioButton label="Enable audio" />
       <Toaster
         icons={{
           warning: <WarningIcon weight="bold" />,

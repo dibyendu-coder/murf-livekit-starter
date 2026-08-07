@@ -1,10 +1,10 @@
 import { headers } from 'next/headers';
-import { LandingView } from '@/components/app/landing-view';
+import { App } from '@/components/app/app';
 import { getAppConfig } from '@/lib/utils';
 
-export default async function Page() {
+export default async function AgentPage() {
   const hdrs = await headers();
   const appConfig = await getAppConfig(hdrs);
 
-  return <LandingView appConfig={appConfig} />;
+  return <App appConfig={appConfig} />;
 }

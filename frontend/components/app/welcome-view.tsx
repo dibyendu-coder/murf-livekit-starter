@@ -1,4 +1,6 @@
-import { Button } from '@/components/ui/button';
+'use client';
+
+import { AllowMicToggle } from '@/components/app/allow-mic-toggle';
 
 function WelcomeImage() {
   return (
@@ -37,13 +39,12 @@ export const WelcomeView = ({
           Chat live with your voice AI agent
         </p>
 
-        <Button
-          size="lg"
-          onClick={onStartCall}
-          className="mt-6 w-64 rounded-full font-mono text-xs font-bold tracking-wider uppercase"
-        >
-          {startButtonText}
-        </Button>
+        <div className="mt-6 flex w-full max-w-sm flex-col gap-3 px-4">
+          <AllowMicToggle label={startButtonText} onAllowed={onStartCall} />
+          <p className="text-muted-foreground text-xs leading-5">
+            Grant microphone access to join the voice call.
+          </p>
+        </div>
       </section>
 
       <div className="fixed bottom-5 left-0 flex w-full items-center justify-center">

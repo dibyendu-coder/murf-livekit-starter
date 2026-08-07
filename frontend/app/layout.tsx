@@ -47,7 +47,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
   const hdrs = await headers();
   const appConfig = await getAppConfig(hdrs);
   const styles = getStyles(appConfig);
-  const { pageTitle, pageDescription, companyName, logo, logoDark } = appConfig;
+  const { pageTitle, pageDescription, companyName } = appConfig;
 
   return (
     <html
@@ -76,16 +76,14 @@ export default async function RootLayout({ children }: RootLayoutProps) {
               target="_blank"
               rel="noopener noreferrer"
               href="https://livekit.io"
-              className="scale-100 transition-transform duration-300 hover:scale-110"
+              className="flex items-center gap-2 transition-transform duration-300 hover:scale-110"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={logo} alt={`${companyName} Logo`} className="block size-6 dark:hidden" />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={logoDark ?? logo}
-                alt={`${companyName} Logo`}
-                className="hidden size-6 dark:block"
-              />
+              <span className="flex size-6 items-center justify-center rounded-md bg-foreground font-mono text-[10px] font-bold text-background">
+                M
+              </span>
+              <span className="text-foreground hidden text-xs font-semibold tracking-[0.25em] uppercase md:block">
+                {companyName}
+              </span>
             </a>
             <span className="text-foreground font-mono text-xs font-bold tracking-wider uppercase">
               Built with{' '}

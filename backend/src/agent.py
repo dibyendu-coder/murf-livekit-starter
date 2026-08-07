@@ -118,6 +118,11 @@ async def my_agent(ctx: JobContext):
         "room": ctx.room.name,
     }
 
+    # Connect before attaching the session to the room. Starting the session
+    # first can leave the audio/transcription pipeline without a connected room,
+    # which means user turns never reach the LLM reliably.
+    await ctx.connect()
+
     # Set up a voice AI pipeline using Murf Falcon, Gemini, Deepgram, and the LiveKit turn detector
     session = AgentSession(
         # Speech-to-text (STT) is your agent's ears, turning the user's speech into text that the LLM can understand
@@ -140,9 +145,9 @@ async def my_agent(ctx: JobContext):
         # See more at https://docs.livekit.io/agents/build/turns
         turn_detection=MultilingualModel(),
         vad=ctx.proc.userdata["vad"],
-        # allow the LLM to generate a response while waiting for the end of turn
-        # See more at https://docs.livekit.io/agents/build/audio/#preemptive-generation
-        preemptive_generation=True,
+        # Wait for the final STT transcript. Generating from an interim result
+        # can produce replies that do not match what the user actually said.
+        preemptive_generation=False,
     )
 
     # To use a realtime model instead of a voice pipeline, use the following session setup instead.
@@ -177,8 +182,14 @@ async def my_agent(ctx: JobContext):
         ),
     )
 
-    # Join the room and connect to the user
-    await ctx.connect()
+    # A system prompt alone does not produce speech when the caller joins.
+    # Start the conversation explicitly so the user knows the agent is ready.
+    await session.generate_reply(
+        instructions=(
+            "Greet the user warmly and briefly. Say that you are ready to help "
+            "with spoken English practice, then ask for their age and English level."
+        )
+    )
 
 
 if __name__ == "__main__":

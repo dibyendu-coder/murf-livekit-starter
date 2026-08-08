@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, type MotionProps, motion } from 'motion/react';
 import { useAgent, useSessionContext, useSessionMessages } from '@livekit/components-react';
+import { Mic, Volume2 } from 'lucide-react';
 import { AgentChatTranscript } from '@/components/agents-ui/agent-chat-transcript';
 import {
   AgentControlBar,
@@ -153,6 +154,8 @@ export interface AgentSessionView_01Props {
   audioVisualizerWaveLineWidth?: number;
   /** Optional class name merged onto the outer `<section>` container. */
   className?: string;
+  /** Called when the user ends the call. */
+  onEndCall?: () => void;
 }
 
 export function AgentSessionView_01({
@@ -171,6 +174,7 @@ export function AgentSessionView_01({
   audioVisualizerRadialBarCount,
   audioVisualizerRadialRadius,
   audioVisualizerWaveLineWidth,
+  onEndCall,
   ref,
   className,
   ...props
@@ -180,6 +184,11 @@ export function AgentSessionView_01({
   const [chatOpen, setChatOpen] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { state: agentState } = useAgent();
+  const isSpeaking = agentState === 'speaking';
+  const status = isSpeaking
+    ? { label: 'Speaking', text: 'Your agent is replying', icon: Volume2 }
+    : { label: 'Listening', text: 'Your agent is listening', icon: Mic };
+  const StatusIcon = status.icon;
 
   const controls: AgentControlBarControls = {
     leave: true,
@@ -204,6 +213,13 @@ export function AgentSessionView_01({
       className={cn('bg-background relative z-10 h-full w-full overflow-hidden', className)}
       {...props}
     >
+      <div className="absolute top-5 left-1/2 z-20 -translate-x-1/2 rounded-full border bg-background/90 px-4 py-2 shadow-sm backdrop-blur">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <StatusIcon className={cn('size-4', isSpeaking && 'text-primary')} />
+          <span>{status.label}</span>
+          <span className="text-muted-foreground">— {status.text}</span>
+        </div>
+      </div>
       <Fade top className="absolute inset-x-4 top-0 z-10 h-40" />
       {/* transcript */}
 
@@ -264,7 +280,7 @@ export function AgentSessionView_01({
             controls={controls}
             isChatOpen={chatOpen}
             isConnected={session.isConnected}
-            onDisconnect={session.end}
+            onDisconnect={onEndCall ?? (() => void session.end())}
             onIsChatOpenChange={setChatOpen}
           />
         </div>

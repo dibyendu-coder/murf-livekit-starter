@@ -145,9 +145,14 @@ async def my_agent(ctx: JobContext):
         # See more at https://docs.livekit.io/agents/build/turns
         turn_detection=MultilingualModel(),
         vad=ctx.proc.userdata["vad"],
-        # Wait for the final STT transcript. Generating from an interim result
-        # can produce replies that do not match what the user actually said.
-        preemptive_generation=False,
+        # Keep the pause after speech short. The defaults can wait as long as
+        # three seconds before closing a turn, which makes a spoken exchange
+        # feel unresponsive.
+        min_endpointing_delay=0.3,
+        max_endpointing_delay=1.5,
+        # Start LLM/TTS work from an interim transcript and discard it if the
+        # caller continues. This overlaps inference with the end-of-turn wait.
+        preemptive_generation=True,
     )
 
     # To use a realtime model instead of a voice pipeline, use the following session setup instead.

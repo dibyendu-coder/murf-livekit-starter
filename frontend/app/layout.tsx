@@ -1,4 +1,4 @@
-import { Public_Sans } from 'next/font/google';
+import { Nunito } from 'next/font/google';
 import localFont from 'next/font/local';
 import { headers } from 'next/headers';
 import { ThemeProvider } from '@/components/app/theme-provider';
@@ -7,9 +7,12 @@ import { cn } from '@/lib/shadcn/utils';
 import { getAppConfig, getStyles } from '@/lib/utils';
 import '@/styles/globals.css';
 
-const publicSans = Public_Sans({
+// Nunito — friendly, rounded, great for educational apps
+const nunito = Nunito({
   variable: '--font-public-sans',
   subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
 });
 
 const commitMono = localFont({
@@ -47,14 +50,14 @@ export default async function RootLayout({ children }: RootLayoutProps) {
   const hdrs = await headers();
   const appConfig = await getAppConfig(hdrs);
   const styles = getStyles(appConfig);
-  const { pageTitle, pageDescription, companyName } = appConfig;
+  const { pageTitle, pageDescription } = appConfig;
 
   return (
     <html
       lang="en"
       suppressHydrationWarning
       className={cn(
-        publicSans.variable,
+        nunito.variable,
         commitMono.variable,
         'scroll-smooth font-sans antialiased'
       )}
@@ -63,42 +66,18 @@ export default async function RootLayout({ children }: RootLayoutProps) {
         {styles && <style>{styles}</style>}
         <title>{pageTitle}</title>
         <meta name="description" content={pageDescription} />
+        <meta name="theme-color" content="#0f0a1e" />
       </head>
       <body className="overflow-x-hidden">
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
+          defaultTheme="dark"
           enableSystem
           disableTransitionOnChange
         >
-          <header className="fixed top-0 left-0 z-50 hidden w-full flex-row justify-between p-6 md:flex">
-            <a
-              target="_blank"
-              rel="noopener noreferrer"
-              href="https://livekit.io"
-              className="flex items-center gap-2 transition-transform duration-300 hover:scale-110"
-            >
-              <span className="flex size-6 items-center justify-center rounded-md bg-foreground font-mono text-[10px] font-bold text-background">
-                M
-              </span>
-              <span className="text-foreground hidden text-xs font-semibold tracking-[0.25em] uppercase md:block">
-                {companyName}
-              </span>
-            </a>
-            <span className="text-foreground font-mono text-xs font-bold tracking-wider uppercase">
-              Built with{' '}
-              <a
-                target="_blank"
-                rel="noopener noreferrer"
-                href="https://docs.livekit.io/agents"
-                className="underline underline-offset-4"
-              >
-                LiveKit Agents
-              </a>
-            </span>
-          </header>
-
           {children}
+
+          {/* Subtle theme toggle — hidden until hovered */}
           <div className="group fixed bottom-0 left-1/2 z-50 mb-2 -translate-x-1/2">
             <ThemeToggle className="translate-y-20 transition-transform delay-150 duration-300 group-hover:translate-y-0" />
           </div>

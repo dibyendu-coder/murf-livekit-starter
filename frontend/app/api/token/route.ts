@@ -32,6 +32,16 @@ export async function POST(req: Request) {
 
     // Parse room config from request body (if provided).
     const body = await req.json().catch(() => ({}));
+
+    // --- Stable caller identity ---
+    // The frontend sends a persistent userId from localStorage so the agent
+    // can recognise the same caller across sessions.  Fall back to a random
+    // id only when nothing is provided (e.g. sandbox / sandbox testing).
+    const callerUserId: string =
+      typeof body?.user_id === 'string' && body.user_id.trim().length > 0
+        ? body.user_id.trim()
+        : `user_${Math.random().toString(36).slice(2, 10)}`;
+
     let roomConfig: RoomConfiguration | undefined;
     if (body?.room_config) {
       roomConfig = RoomConfiguration.fromJson(body.room_config, { ignoreUnknownFields: true });
@@ -43,11 +53,12 @@ export async function POST(req: Request) {
         { ignoreUnknownFields: true }
       );
     }
-      
-    // Generate participant token
+
+    // Use the stable caller id as the participant identity.
+    // Room name is still random per-session (each call is a separate room).
     const participantName = 'user';
-    const participantIdentity = `voice_assistant_user_${Math.floor(Math.random() * 10_000)}`;
-    const roomName = `voice_assistant_room_${Math.floor(Math.random() * 10_000)}`;
+    const participantIdentity = callerUserId;
+    const roomName = `speakeasy_room_${Math.random().toString(36).slice(2, 10)}`;
 
     const participantToken = await createParticipantToken(
       { identity: participantIdentity, name: participantName },

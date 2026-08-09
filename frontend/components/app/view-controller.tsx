@@ -26,18 +26,25 @@ function CallStateCard({
   loading?: boolean;
 }) {
   return (
-    <section className="mx-auto flex w-full max-w-md flex-col items-center rounded-3xl border bg-card p-8 text-center shadow-sm">
-      <div className="mb-5 flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-        {loading ? <Loader2 className="size-6 animate-spin" /> : <Phone className="size-6" />}
+    <section className="relative mx-auto flex w-full max-w-sm flex-col items-center overflow-hidden rounded-3xl border border-white/10 bg-white/6 px-8 py-10 text-center shadow-2xl shadow-black/40 backdrop-blur-xl">
+      {/* Amber glow */}
+      <div className="pointer-events-none absolute -top-10 left-1/2 h-28 w-28 -translate-x-1/2 rounded-full bg-amber-400/20 blur-3xl" aria-hidden />
+
+      <div className="relative mb-5 flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-amber-400/20 to-amber-500/10 ring-1 ring-amber-400/30">
+        {loading
+          ? <Loader2 className="size-7 animate-spin text-amber-300" />
+          : <Phone className="size-7 text-amber-300" />}
       </div>
-      <p className="text-xs font-bold tracking-[0.2em] text-muted-foreground uppercase">Call status</p>
-      <h1 className="mt-2 text-2xl font-semibold">{title}</h1>
-      <p className="mt-3 text-sm leading-6 text-muted-foreground">{description}</p>
+
+      <p className="text-xs font-bold tracking-[0.2em] text-amber-300/60 uppercase">Call status</p>
+      <h1 className="mt-2 text-2xl font-bold text-white">{title}</h1>
+      <p className="mt-3 text-sm leading-6 text-white/50">{description}</p>
+
       {action && actionLabel && (
         <button
           type="button"
           onClick={action}
-          className="mt-7 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          className="mt-7 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 px-6 py-3 text-sm font-bold text-slate-900 shadow-lg shadow-amber-500/30 transition-all hover:scale-105 hover:shadow-amber-500/50"
         >
           <RotateCcw className="size-4" />
           {actionLabel}

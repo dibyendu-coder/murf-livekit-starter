@@ -276,3 +276,239 @@ For deeper documentation on each part, see:
 ## License
 
 MIT
+
+---
+
+## Day 5 — Learning & Literacy Tool
+
+> **Challenge track**: 10 Days of Voice Agents — Learning & Literacy
+
+### What problem does the tool solve?
+
+Before Day 5, the voice tutor could explain concepts and correct free-form speech, but it had no structured exercise library. The learner could not request a specific grammar drill or vocabulary quiz and receive a real, curated question. There was also no programmatic way to evaluate a learner's answer — the LLM had to judge correctness entirely on its own, without an authoritative answer key.
+
+Day 5 adds two function-calling tools that give the agent access to a local, curated exercise dataset. The agent now:
+
+1. **Retrieves a real exercise** from the dataset instead of improvising one.
+2. **Evaluates the learner's answer** against the stored correct answer using deterministic logic.
+
+### Why is the tool necessary?
+
+| Without tool | With tool |
+|---|---|
+| LLM composes exercises from memory — quality is inconsistent | Exercises come from a structured, reviewed dataset |
+| Correctness is judged by the LLM — may be lenient or wrong | Correctness is determined by `evaluate_answer()` — deterministic |
+| No anti-repeat logic — same question may be asked twice | `exclude_ids` prevents same exercise repeating in a session |
+| Difficulty never changes programmatically | Adaptive difficulty: correct-streak of 3 raises level |
+
+---
+
+### Dataset
+
+> **The current learning exercise dataset is locally curated for the Day-5 Learning & Literacy prototype.**
+> It is NOT sourced from an external API.
+
+| Field | Value |
+|---|---|
+| **Source** | `Local Learning Exercise Dataset` |
+| **Data version** | `2026-08-10` |
+| **File** | `backend/src/exercises.py` |
+| **Count** | 35 exercises |
+| **Levels** | `beginner` · `intermediate` · `advanced` |
+| **Skills** | `grammar` · `vocabulary` · `sentence_formation` · `speaking` · `comprehension` |
+| **Types** | `multiple_choice` · `fill_in_the_blank` · `sentence_correction` · `vocabulary` · `speaking_prompt` |
+
+Each exercise contains:
+
+```json
+{
+  "id": "grammar_001",
+  "level": "beginner",
+  "skill": "grammar",
+  "topic": "present tense",
+  "question": "She ___ to school every day.",
+  "options": ["go", "goes", "going"],
+  "correct_answer": "goes",
+  "explanation": "We use 'goes' with 'she' in the simple present tense.",
+  "difficulty": 1,
+  "exercise_type": "fill_in_the_blank"
+}
+```
+
+---
+
+### Function: `get_next_exercise`
+
+**File**: `backend/src/exercises.py`
+**Agent tool name**: `get_next_exercise_tool`
+
+**Description**:
+Retrieves a suitable exercise from the local dataset based on the learner's level, skill, and optional topic. Respects `exclude_ids` to prevent repetition.
+
+**Input parameters**:
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `level` | `str` | Yes | `"beginner"` / `"intermediate"` / `"advanced"` |
+| `skill` | `str` | Yes | `"grammar"` / `"vocabulary"` / `"sentence_formation"` / `"speaking"` / `"comprehension"` |
+| `topic` | `str or None` | No | Optional topic filter, e.g. `"present tense"` |
+| `difficulty` | `int or None` | No | `1` / `2` / `3` |
+| `exclude_ids` | `list[str] or None` | No | Exercise IDs to skip |
+
+**Output structure**:
+
+```json
+{
+  "success": true,
+  "exercise": {
+    "id": "grammar_001",
+    "question": "She ___ to school every day.",
+    "options": ["go", "goes", "going"],
+    "level": "beginner",
+    "skill": "grammar",
+    "topic": "present tense",
+    "difficulty": 1,
+    "exercise_type": "fill_in_the_blank"
+  },
+  "source": "Local Learning Exercise Dataset",
+  "data_version": "2026-08-10"
+}
+```
+
+On failure: `{ "success": false, "error": "..." }`
+
+---
+
+### Function: `evaluate_answer`
+
+**File**: `backend/src/exercises.py`
+**Agent tool name**: `evaluate_answer_tool`
+
+**Description**:
+Evaluates the learner's answer against the stored correct answer for a given exercise. Uses normalised string matching (case-insensitive, punctuation-stripped). For `speaking_prompt` exercises, uses keyword-presence matching.
+
+**Input parameters**:
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `exercise_id` | `str` | Yes | The `id` field from `get_next_exercise` output |
+| `learner_answer` | `str` | Yes | The learner's verbatim spoken or typed answer |
+
+**Output structure**:
+
+```json
+{
+  "success": true,
+  "correct": false,
+  "score": 0,
+  "feedback": "Good attempt! The correct answer is 'goes'.",
+  "correct_answer": "goes",
+  "explanation": "We use 'goes' with 'she' in the simple present tense.",
+  "exercise_id": "grammar_001"
+}
+```
+
+On failure: `{ "success": false, "error": "...", "exercise_id": "grammar_001" }`
+
+---
+
+### Tool-calling logic
+
+The agent system prompt instructs Gemini to:
+
+- **Call `get_next_exercise_tool`** whenever the learner asks for a practice question, exercise, or says they want to continue learning — including Hindi/code-mixed requests like `"Mujhe ek grammar question do"`.
+- **NOT call** the tool for greetings, casual conversation, or non-learning requests.
+- **Call `evaluate_answer_tool`** immediately after the learner answers an exercise, passing the `exercise_id` from the previous tool result and the learner's verbatim answer.
+- **Never invent** an exercise or an evaluation result if the tool is available.
+
+---
+
+### Error handling
+
+| Scenario | Agent response |
+|---|---|
+| `get_next_exercise` returns `success=false` | "I'm having a little trouble accessing the exercises right now. Let's try again in a moment." |
+| `evaluate_answer` returns `success=false` | "I couldn't check that answer properly just now, so I don't want to give you misleading feedback. Let's try the question again." |
+| Exercise ID not found | `success=false` with a short error string (no stack trace) |
+| Empty/invalid learner answer | `success=false` with a short error string |
+
+Technical errors, stack traces, and internal details are **never** exposed to the learner.
+
+---
+
+### Wrong-answer phrasing
+
+The system prompt prohibits shaming language. Wrong answers receive supportive feedback:
+
+- "Good attempt! The correct answer is X."
+- "Almost! Let's look at that together."
+- "Nice try! The correct form is X."
+- "You're getting there! The answer is X."
+
+---
+
+### Adaptive difficulty
+
+| State | Behaviour |
+|---|---|
+| 3 consecutive correct answers | Difficulty increases by 1 (max 3) |
+| Incorrect answer | Streak resets; difficulty does NOT change on a single wrong answer |
+| Unknown learner level | Defaults to `beginner` / difficulty 1 |
+
+---
+
+### Example conversation (Demo flow)
+
+```
+Learner: I am a beginner. Give me a grammar exercise.
+
+  Agent calls: get_next_exercise_tool(level="beginner", skill="grammar")
+  Tool returns: exercise grammar_001
+
+Agent: Great! Here's a grammar question.
+       She ___ to school every day.
+       Which word fits the blank: A) go, B) goes, or C) going?
+
+Learner: Goes.
+
+  Agent calls: evaluate_answer_tool(exercise_id="grammar_001", learner_answer="Goes")
+  Tool returns: correct=true
+
+Agent: Excellent! That's exactly right. We use 'goes' with 'she'
+       in the simple present tense. Would you like another one?
+
+Learner: Mujhe ek aur question do.
+
+  Agent calls: get_next_exercise_tool(level="beginner", skill="grammar",
+               exclude_ids=["grammar_001"])
+  Tool returns: a different exercise
+
+Agent: Bilkul! Here's your next question...
+```
+
+---
+
+### Testing performed
+
+| Test | Type | Result |
+|---|---|---|
+| `get_next_exercise` returns valid exercise | Unit | Passed |
+| `get_next_exercise` with `exclude_ids` returns different exercise | Unit | Passed |
+| `evaluate_answer` correct answer → `correct=true` | Unit | Passed |
+| `evaluate_answer` wrong answer → supportive feedback, no shaming | Unit | Passed |
+| `evaluate_answer` unknown exercise ID → `success=false` gracefully | Unit | Passed |
+| Case-insensitive + punctuation-stripped matching | Unit | Passed |
+| All three levels have exercises | Smoke | Passed |
+| All five skills have exercises | Smoke | Passed |
+| Grammar exercise request triggers `get_next_exercise_tool` | LLM eval | Passed |
+| Greeting does NOT trigger any tool | LLM eval | Passed |
+| Hindi code-mixed request triggers `get_next_exercise_tool` | LLM eval | Passed |
+
+---
+
+### Known limitations
+
+- The exercise dataset is small (35 exercises). With extensive use, the anti-repeat window (last 20) may exhaust a skill/level combination. The fallback relaxes filters to prevent deadlock.
+- Speaking-prompt evaluation uses keyword-presence matching, not semantic evaluation. An LLM-based semantic evaluator could be added in a future day.
+- Adaptive difficulty uses only the current session's streak; it does not persist across sessions. Integrating with `save_caller` / `lookup_caller` is a future enhancement.
+- The dataset covers English exercises only; Hindi-medium exercises are not yet included.

@@ -19,6 +19,7 @@ from livekit.plugins import murf, silero, google, deepgram, noise_cancellation, 
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 from database import init_db, lookup_caller, save_caller
+from exercises import get_next_exercise as _get_next_exercise, evaluate_answer as _evaluate_answer
 
 logger = logging.getLogger("agent")
 
@@ -85,15 +86,65 @@ Behavior rules
 - Once you have both age and level, briefly acknowledge them and immediately begin a short speaking practice question.
 - If you cannot answer a question, be honest and offer a simpler practice exercise instead.
 - Always ask a follow-up question to continue the spoken practice.
+
+LEARNING EXERCISES — FUNCTION TOOLS (DAY 5)
+You have two structured-exercise tools. Use them precisely as described.
+
+get_next_exercise_tool:
+Call this tool whenever the learner:
+  - Asks for a practice question or exercise
+  - Says they want to practice English grammar, vocabulary, speaking, or comprehension
+  - Asks for another question or wants to continue
+  - Uses code-mixed language to ask for a question (e.g. "Mujhe ek grammar question do")
+Do NOT call this tool for greetings, casual conversation, or requests unrelated to learning.
+Do NOT invent or compose an exercise yourself when this tool is available.
+Always pass the learner's known level and skill. If level is unknown, default to "beginner".
+
+evaluate_answer_tool:
+Call this tool immediately after the learner answers an exercise that was retrieved by
+get_next_exercise_tool. Pass the exercise_id from the previous get_next_exercise_tool result
+and the learner's verbatim answer.
+Do NOT claim whether the answer is correct or incorrect without calling this tool first.
+Do NOT invent an evaluation result if the tool fails.
+
+WRONG ANSWER VOICE PHRASING (MANDATORY):
+After evaluate_answer_tool returns correct=false, use only supportive, encouraging language.
+NEVER say: "Wrong", "That's wrong", "Bad answer", "You failed", "You don't understand".
+INSTEAD say things like:
+  "Good attempt! The correct answer is X."
+  "Almost! Let's look at that together."
+  "Nice try! The correct form is X."
+  "You're getting there! The answer is X."
+Then offer a brief explanation (from the tool's 'explanation' field) and ask if they want another question.
+
+For multiple-choice questions, read the options aloud clearly, e.g.:
+  "Which word fits the blank: A) go, B) goes, or C) going?"
+
+TOOL FAILURE HANDLING:
+If get_next_exercise_tool returns success=false, say:
+  "I'm having a little trouble accessing the exercises right now. Let's try again in a moment."
+If evaluate_answer_tool returns success=false, say:
+  "I couldn't check that answer properly just now, so I don't want to give you misleading feedback. Let's try the question again."
+Never expose technical errors, stack traces, or internal details to the learner.
 """
 
 
 class Assistant(Agent):
-    def __init__(self, user_id: str) -> None:
+    def __init__(self, user_id: str = "default_user") -> None:
         super().__init__(instructions=SYSTEM_PROMPT)
         # Store the caller's user_id so tools can use it without being passed it
         # again by the LLM each time.
         self._user_id = user_id
+
+        # ── Day-5: session-level exercise memory ──────────────────────────
+        # Track which exercises have been used this session to prevent repeats.
+        self._used_exercise_ids: list[str] = []
+        # Track the last exercise so evaluate_answer_tool can reference it.
+        self._current_exercise_id: str | None = None
+        # Adaptive difficulty state (1=easy, 2=medium, 3=hard).
+        self._current_difficulty: int = 1
+        # Consecutive correct answers — used to gently raise difficulty.
+        self._correct_streak: int = 0
 
     # ------------------------------------------------------------------
     # Tool: look up a caller in the database
@@ -178,6 +229,122 @@ class Assistant(Agent):
         }
         save_caller(record)
         return f"Progress saved for {name}. I'll remember this for next time!"
+
+    # ------------------------------------------------------------------
+    # Tool: retrieve the next learning exercise (Day 5)
+    # ------------------------------------------------------------------
+
+    @function_tool
+    async def get_next_exercise_tool(
+        self,
+        context: RunContext,
+        level: str,
+        skill: str,
+        topic: str | None = None,
+    ) -> dict:
+        """Use this tool whenever the learner asks for a practice question, wants to
+        practice English, asks for another exercise, wants to continue learning, or
+        needs an exercise based on their current level, skill, or topic.
+        Do NOT invent an exercise when this tool is available.
+        Do NOT call this for greetings, casual conversation, or non-learning requests.
+
+        Valid levels  : "beginner", "intermediate", "advanced"
+        Valid skills  : "grammar", "vocabulary", "sentence_formation", "speaking",
+                        "comprehension"
+
+        Args:
+            level: The learner's English level.
+            skill: The skill to practise (grammar / vocabulary / sentence_formation /
+                   speaking / comprehension).
+            topic: Optional topic within the skill (e.g. "present tense"). Leave
+                   None if not specified by the learner.
+
+        Returns:
+            A dict with 'success', 'exercise' (id, question, options, level, skill,
+            topic, difficulty, exercise_type), 'source', and 'data_version'.
+            If success is False, contains 'error' with a short reason.
+        """
+        logger.info(
+            "get_next_exercise_tool called: level=%s skill=%s topic=%s difficulty=%s",
+            level,
+            skill,
+            topic,
+            self._current_difficulty,
+        )
+
+        result = _get_next_exercise(
+            level=level,
+            skill=skill,
+            topic=topic,
+            difficulty=self._current_difficulty if self._current_difficulty > 1 else None,
+            exclude_ids=list(self._used_exercise_ids),
+        )
+
+        if result.get("success") and result.get("exercise"):
+            exercise_id = result["exercise"]["id"]
+            self._current_exercise_id = exercise_id
+            # Add to used set; keep the rolling window to 20 to avoid deadlock
+            # on small datasets.
+            self._used_exercise_ids.append(exercise_id)
+            if len(self._used_exercise_ids) > 20:
+                self._used_exercise_ids.pop(0)
+            logger.info("Exercise retrieved: id=%s", exercise_id)
+
+        return result
+
+    # ------------------------------------------------------------------
+    # Tool: evaluate the learner's answer (Day 5)
+    # ------------------------------------------------------------------
+
+    @function_tool
+    async def evaluate_answer_tool(
+        self,
+        context: RunContext,
+        exercise_id: str,
+        learner_answer: str,
+    ) -> dict:
+        """Use this tool after the learner answers an exercise retrieved by
+        get_next_exercise_tool. Evaluate the learner's response using the exercise
+        context. Do NOT make unsupported claims about whether the answer is correct
+        when this evaluation tool is available.
+
+        Args:
+            exercise_id:    The 'id' field from the exercise returned by
+                            get_next_exercise_tool.
+            learner_answer: The learner's spoken or typed response, verbatim.
+
+        Returns:
+            A dict with 'success', 'correct' (bool), 'score' (0 or 1), 'feedback'
+            (ready-to-speak supportive string), 'correct_answer', 'explanation',
+            and 'exercise_id'.
+            If success is False, contains 'error' with a short reason.
+        """
+        logger.info(
+            "evaluate_answer_tool called: exercise_id=%s learner_answer=%r",
+            exercise_id,
+            learner_answer,
+        )
+
+        result = _evaluate_answer(exercise_id=exercise_id, learner_answer=learner_answer)
+
+        if result.get("success"):
+            # Adaptive difficulty — adjust gently, never aggressively
+            if result["correct"]:
+                self._correct_streak += 1
+                # Raise difficulty only after 3 consecutive correct answers
+                if self._correct_streak >= 3 and self._current_difficulty < 3:
+                    self._current_difficulty += 1
+                    self._correct_streak = 0
+                    logger.info(
+                        "Difficulty raised to %d after streak", self._current_difficulty
+                    )
+            else:
+                self._correct_streak = 0
+                # Lower difficulty only after struggling (do not drop on a single miss)
+                # The agent is trusted to detect when the learner is genuinely struggling
+                # across multiple turns; a single wrong answer does not change difficulty.
+
+        return result
 
 
 server = AgentServer()

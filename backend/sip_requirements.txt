@@ -1,0 +1,18 @@
+# sip_requirements.txt — Day 6: Outbound SIP calling via LiveKit Trunk
+#
+# outbound_call.py uses the LiveKit Python SDK which is ALREADY installed
+# as part of livekit-agents (in pyproject.toml).
+#
+# NO additional packages are required.
+# The livekit.api module used for SIP trunk calls comes with livekit-agents.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# To confirm everything is in place, run:
+#
+#   python -c "from livekit import api; print('livekit.api OK')"
+#
+# If it prints "livekit.api OK" you are ready.
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Previously installed packages (pyVoIP, audioop-lts) were for the old
+# direct-SIP approach. They are no longer needed but do no harm if present.

@@ -439,11 +439,12 @@ async def my_agent(ctx: JobContext):
         ),
     )
 
-    # Re-check participant identity right before lookup in case participant connected after room join
-    if ctx.room.remote_participants:
-        p = list(ctx.room.remote_participants.values())[0]
-        if p.identity:
-            user_id = p.identity
+    # Wait until a remote participant (learner / SIP call) has actually joined the room
+    # before resolving identity and generating the greeting.
+    participant = await ctx.wait_for_participant()
+    if participant and participant.identity:
+        user_id = participant.identity
+    logger.info("Caller identity resolved: %s", user_id)
 
     # Look up the caller in Python — do NOT rely on the LLM calling a tool here
     # because a tool-call round-trip on the very first turn can stall speech output.

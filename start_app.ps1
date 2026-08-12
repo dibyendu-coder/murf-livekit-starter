@@ -24,6 +24,10 @@ if (Test-CommandExists "livekit-server") {
 }
 
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$repoRoot\backend'; uv run python src/agent.py dev"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$repoRoot\backend'; uv run python src/escalations_api.py"
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$repoRoot\frontend'; pnpm dev"
 
-Write-Host "Started backend and frontend in separate PowerShell windows."
+Write-Host "Started backend (agent + escalations API) and frontend in separate PowerShell windows."
+Write-Host "  Voice agent  : http://localhost:3000/agent"
+Write-Host "  Dashboard    : http://localhost:3000/dashboard"
+Write-Host "  Escalations  : http://localhost:8080/api/escalations"

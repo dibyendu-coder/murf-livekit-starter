@@ -18,7 +18,7 @@ from livekit.agents import (
 from livekit.plugins import murf, silero, google, deepgram, noise_cancellation, openai
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
-from database import init_db, lookup_caller, save_caller
+from database import init_db, lookup_caller, save_caller, create_escalation
 from exercises import get_next_exercise as _get_next_exercise, evaluate_answer as _evaluate_answer
 
 logger = logging.getLogger("agent")
@@ -126,6 +126,70 @@ If get_next_exercise_tool returns success=false, say:
 If evaluate_answer_tool returns success=false, say:
   "I couldn't check that answer properly just now, so I don't want to give you misleading feedback. Let's try the question again."
 Never expose technical errors, stack traces, or internal details to the learner.
+
+HUMAN ESCALATION — FUNCTION TOOL (DAY 7)
+
+You have one escalation tool: create_escalation_tool.
+Use it ONLY in the two situations below. Use your understanding of meaning — not just keywords.
+
+ESCALATION CONDITION 1 — Learner is clearly upset, frustrated, or overwhelmed:
+  Examples: "I'm frustrated", "I don't understand this anymore", "This is too hard",
+            "I give up", "I can't do this", "I am getting frustrated"
+
+ESCALATION CONDITION 2 — Learner explicitly asks for a teacher or human:
+  Examples: "I want to talk to a teacher", "Can I speak to a human?",
+            "Connect me to my teacher", "I need a human to explain this",
+            "Can a teacher help me?"
+
+DO NOT ESCALATE — these are NORMAL tutoring interactions:
+  - Getting an answer wrong
+  - "Give me another question"
+  - "Explain that again"
+  - "I don't know the answer"
+  - "Can you repeat the question?"
+  - Any single wrong answer or momentary confusion
+
+PERMISSION FLOW (MANDATORY — always ask first):
+
+  If CONDITION 1 (frustrated learner):
+    Say: "I understand. I can create a request for a teacher to help you. I would share
+    a short summary of what you're struggling with and what we've already tried.
+    Would you like me to send that request?"
+
+  If CONDITION 2 (explicit teacher request):
+    Say: "Sure. I can create a request for a teacher. I would share a short summary of
+    what you need help with. Is that okay?"
+
+  Wait for the learner's response.
+
+  If learner says YES → call create_escalation_tool immediately.
+  If learner says NO  → say exactly: "That's completely fine. We won't send a request.
+    We can continue practicing here." — do NOT create a request, do NOT pressure again.
+
+AFTER SUCCESSFUL TOOL CALL:
+  Say: "Your teacher-help request has been created. Your reference ID is [insert the
+  reference_id from the tool result]. A teacher can review the request and follow up
+  using your preferred method."
+
+IF TOOL FAILS (success=false in the result):
+  Say: "I'm sorry, I couldn't create the teacher-help request right now. You can
+  continue practicing here, or try again later."
+  Do NOT claim the request was created. Do NOT give a fake reference ID.
+
+INFORMATION TO INCLUDE when calling create_escalation_tool:
+  - learner_name: the learner's name if known, otherwise null
+  - reason: brief reason ("Learner frustrated" or "Learner requested teacher")
+  - what_happened: one or two sentences describing the situation
+  - agent_actions_taken: a short list of things the agent already tried this session
+  - urgency: "normal" unless the learner is very distressed, in which case "high"
+  - language: the learner's language or mix (e.g. "Hindi + English")
+  - preferred_follow_up: ask the learner how they prefer to be contacted, or use null
+  - topic: the topic being studied if known, otherwise null
+
+NEVER include in the tool call:
+  - Passwords, OTPs, PINs, API keys, authentication tokens
+  - The full conversation transcript
+  - Any sensitive personal information not needed by the teacher
 """
 
 
@@ -345,6 +409,105 @@ class Assistant(Agent):
                 # across multiple turns; a single wrong answer does not change difficulty.
 
         return result
+
+    # ------------------------------------------------------------------
+    # Tool: create a human-help escalation request (Day 7)
+    # ------------------------------------------------------------------
+
+    @function_tool
+    async def create_escalation_tool(
+        self,
+        context: RunContext,
+        learner_name: str | None,
+        reason: str,
+        what_happened: str,
+        agent_actions_taken: list[str] | None,
+        urgency: str,
+        language: str | None,
+        preferred_follow_up: str | None,
+        topic: str | None,
+    ) -> dict:
+        """Create a human-help escalation request for a teacher to review.
+
+        ONLY call this tool after:
+          1. Detecting the learner is frustrated OR explicitly asking for a teacher.
+          2. Asking the learner's permission and receiving a clear YES.
+
+        Never call this tool without the learner's explicit consent.
+        Never include passwords, OTPs, PINs, API keys, or full transcripts.
+
+        Args:
+            learner_name:         Learner's first name if known, otherwise None.
+            reason:               Brief reason (e.g. "Learner frustrated" or
+                                  "Learner requested teacher").
+            what_happened:        One or two sentences describing the situation.
+            agent_actions_taken:  List of things the agent already tried
+                                  (e.g. ["3 grammar exercises", "repeated explanation"]).
+                                  Pass an empty list if nothing specific was attempted.
+            urgency:              "normal" or "high".
+            language:             Learner's language or mix (e.g. "Hindi + English").
+            preferred_follow_up:  How the teacher should follow up (e.g. "voice call"),
+                                  or None if not asked.
+            topic:                The learning topic if known (e.g. "grammar"), or None.
+
+        Returns:
+            {"success": True, "reference_id": "HELP-XXXX"} on success.
+            {"success": False, "error": "<short reason>"}   on failure.
+        """
+        # Build a concise human-readable summary for the teacher
+        actions_str = ""
+        if agent_actions_taken:
+            actions_str = "\n\nThe agent already attempted:\n" + "\n".join(
+                f"- {a}" for a in agent_actions_taken
+            )
+
+        summary_lines = [
+            f"Learner needs help{f' with {topic}' if topic else ''}.",
+            f"{what_happened.strip()}{actions_str}",
+        ]
+        if language:
+            summary_lines.append(f"\nLanguage: {language}")
+        if preferred_follow_up:
+            summary_lines.append(f"Follow-up: {preferred_follow_up}")
+
+        summary = "\n".join(summary_lines)
+
+        logger.info(
+            "create_escalation_tool called: learner_id=%s reason=%r urgency=%s",
+            self._user_id,
+            reason,
+            urgency,
+        )
+
+        try:
+            result = create_escalation(
+                learner_id=self._user_id,
+                reason=reason,
+                summary=summary,
+                learner_name=learner_name,
+                topic=topic,
+                agent_actions=agent_actions_taken or [],
+                urgency=urgency or "normal",
+                language=language,
+                preferred_follow_up=preferred_follow_up,
+            )
+            if result.get("success"):
+                logger.info(
+                    "Escalation created successfully: reference_id=%s",
+                    result.get("reference_id"),
+                )
+            else:
+                logger.error(
+                    "create_escalation returned failure: %s", result.get("error")
+                )
+            return result
+        except Exception as exc:  # noqa: BLE001
+            # Log the full technical error for the developer but never expose it
+            # to the learner — the agent's system prompt handles the user-facing message.
+            logger.error(
+                "create_escalation_tool unexpected error: %s", exc, exc_info=True
+            )
+            return {"success": False, "error": "Unexpected error creating escalation."}
 
 
 server = AgentServer()

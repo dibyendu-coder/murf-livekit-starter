@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { BookOpen, Languages, Mic, Sparkles, Star } from 'lucide-react';
+import { BookOpen, Languages, Mic, Sparkles, Star, Users } from 'lucide-react';
 import type { AppConfig } from '@/app-config';
 import { Button } from '@/components/ui/button';
 
@@ -82,15 +82,30 @@ export function LandingView({ appConfig }: LandingViewProps) {
             </div>
           </div>
 
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className="rounded-full border-white/15 bg-white/5 text-white backdrop-blur-sm hover:bg-white/10"
-          >
-            <Link href="/agent">Start practising →</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="rounded-full border border-white/10 bg-white/5 text-white/60 backdrop-blur-sm hover:bg-white/10 hover:text-white"
+            >
+              <Link href="/dashboard" className="flex items-center gap-1.5">
+                <Users className="size-3.5" />
+                Teacher Dashboard
+              </Link>
+            </Button>
+
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="rounded-full border-white/15 bg-white/5 text-white backdrop-blur-sm hover:bg-white/10"
+            >
+              <Link href="/agent">Start practising →</Link>
+            </Button>
+          </div>
         </header>
+
 
         {/* ── Hero ─────────────────────────────────────────────────── */}
         <section className="grid flex-1 items-center gap-16 py-14 lg:grid-cols-2 lg:py-0">

@@ -18,7 +18,16 @@ from livekit.agents import (
 from livekit.plugins import murf, silero, google, deepgram, noise_cancellation, openai
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
-from database import init_db, lookup_caller, save_caller, create_escalation
+from database import (
+    init_db,
+    lookup_caller,
+    save_caller,
+    create_escalation,
+    create_call_record,
+    mark_exercise_started,
+    mark_exercise_completed,
+    end_call_record,
+)
 from exercises import get_next_exercise as _get_next_exercise, evaluate_answer as _evaluate_answer
 
 logger = logging.getLogger("agent")
@@ -194,11 +203,11 @@ NEVER include in the tool call:
 
 
 class Assistant(Agent):
-    def __init__(self, user_id: str = "default_user") -> None:
+    def __init__(self, user_id: str = "default_user", session_id: str | None = None) -> None:
         super().__init__(instructions=SYSTEM_PROMPT)
-        # Store the caller's user_id so tools can use it without being passed it
-        # again by the LLM each time.
+        # Store the caller's user_id and session_id so tools can use them
         self._user_id = user_id
+        self._session_id = session_id or user_id
 
         # ── Day-5: session-level exercise memory ──────────────────────────
         # Track which exercises have been used this session to prevent repeats.
@@ -353,6 +362,9 @@ class Assistant(Agent):
             if len(self._used_exercise_ids) > 20:
                 self._used_exercise_ids.pop(0)
             logger.info("Exercise retrieved: id=%s", exercise_id)
+            # Track exercise started for call analytics (Day 8)
+            if self._session_id:
+                mark_exercise_started(self._session_id)
 
         return result
 
@@ -392,6 +404,10 @@ class Assistant(Agent):
         result = _evaluate_answer(exercise_id=exercise_id, learner_answer=learner_answer)
 
         if result.get("success"):
+            # Track exercise completed and feedback given for call analytics (Day 8)
+            if self._session_id:
+                mark_exercise_completed(self._session_id)
+
             # Adaptive difficulty — adjust gently, never aggressively
             if result["correct"]:
                 self._correct_streak += 1
@@ -525,14 +541,10 @@ server.setup_fnc = prewarm
 @server.rtc_session(agent_name="my-agent")
 async def my_agent(ctx: JobContext):
     # Logging setup
-    # Add any other context you want in all log entries here
     ctx.log_context_fields = {
         "room": ctx.room.name,
     }
 
-    # Connect before attaching the session to the room. Starting the session
-    # first can leave the audio/transcription pipeline without a connected room,
-    # which means user turns never reach the LLM reliably.
     await ctx.connect()
 
     # Resolve user identity safely from remote participants
@@ -543,99 +555,74 @@ async def my_agent(ctx: JobContext):
             user_id = p.identity
     logger.info("Caller identity resolved: %s", user_id)
 
-    # Set up a voice AI pipeline using Murf Falcon, Gemini, Deepgram, and the LiveKit turn detector
-    session = AgentSession(
-        # Speech-to-text (STT) is your agent's ears, turning the user's speech into text that the LLM can understand
-        # See all available models at https://docs.livekit.io/agents/models/stt/
-        stt=deepgram.STT(model="nova-3"),
-        # A Large Language Model (LLM) is your agent's brain, processing user input and generating a response
-        # See all available models at https://docs.livekit.io/agents/models/llm/
-        llm=google.LLM(
-            model="gemini-3.5-flash-lite",
-        ),
-        # Text-to-speech (TTS) is your agent's voice, turning the LLM's text into speech that the user can hear
-        # See all available models as well as voice selections at https://docs.livekit.io/agents/models/tts/
-        tts=murf.TTS(
-            voice="Anisha",
-            style="Conversational",
-            tokenizer=tokenize.basic.SentenceTokenizer(min_sentence_len=1),
-            text_pacing=True,
-        ),
-        # VAD and turn detection are used to determine when the user is speaking and when the agent should respond
-        # See more at https://docs.livekit.io/agents/build/turns
-        turn_detection=MultilingualModel(),
-        # Keep the pause after speech short.
-        min_endpointing_delay=0.3,
-        max_endpointing_delay=1.5,
-        preemptive_generation=True,
-    )
+    # Call Analytics (Day 8): session_id and call_type identification
+    session_id = ctx.room.name
+    call_type = "sip" if ("sip" in session_id.lower() or "sip" in user_id.lower()) else "browser"
+    create_call_record(session_id=session_id, learner_id=user_id, call_type=call_type)
 
-    # To use a realtime model instead of a voice pipeline, use the following session setup instead.
-    # (Note: This is for the OpenAI Realtime API. For other providers, see https://docs.livekit.io/agents/models/realtime/))
-    # 1. Install livekit-agents[openai]
-    # 2. Set OPENAI_API_KEY in .env.local
-    # 3. Add `from livekit.plugins import openai` to the top of this file
-    # 4. Use the following session setup instead of the version above
-    # session = AgentSession(
-    #     llm=openai.realtime.RealtimeModel(voice="marin")
-    # )
+    def _on_shutdown():
+        end_call_record(session_id)
 
-    # # Add a virtual avatar to the session, if desired
-    # # For other providers, see https://docs.livekit.io/agents/models/avatar/
-    # avatar = hedra.AvatarSession(
-    #   avatar_id="...",  # See https://docs.livekit.io/agents/models/avatar/plugins/hedra
-    # )
-    # # Start the avatar and wait for it to join
-    # await avatar.start(session, room=ctx.room)
+    ctx.add_shutdown_callback(_on_shutdown)
 
-    # Start the session, which initializes the voice pipeline and warms up the models
-    await session.start(
-        agent=Assistant(user_id=user_id),
-        room=ctx.room,
-        room_options=room_io.RoomOptions(
-            audio_input=room_io.AudioInputOptions(
-                # Use default BVC noise cancellation for all participants. Avoid
-                # importing `rtc.ParticipantKind` to stay compatible with
-                # different livekit package layouts.
-                noise_cancellation=lambda params: noise_cancellation.BVC(),
+    try:
+        session = AgentSession(
+            stt=deepgram.STT(model="nova-3"),
+            llm=google.LLM(
+                model="gemini-3.5-flash-lite",
             ),
-        ),
-    )
-
-    # Wait until a remote participant (learner / SIP call) has actually joined the room
-    # before resolving identity and generating the greeting.
-    participant = await ctx.wait_for_participant()
-    if participant and participant.identity:
-        user_id = participant.identity
-    logger.info("Caller identity resolved: %s", user_id)
-
-    # Look up the caller in Python — do NOT rely on the LLM calling a tool here
-    # because a tool-call round-trip on the very first turn can stall speech output.
-    caller_record = lookup_caller(user_id)
-
-    if caller_record:
-        name   = caller_record["name"]
-        level  = caller_record.get("current_level") or "unknown level"
-        topics = caller_record.get("topics_covered") or []
-        topics_str = ", ".join(topics) if topics else "various topics"
-        greeting_instructions = (
-            f"This is a returning caller. Their name is {name}, their current English level "
-            f"is {level}, and last time they practised: {topics_str}. "
-            f"Greet {name} warmly by name, briefly mention their level and last topics, "
-            "and ask if they would like to continue from where they left off. "
-            "Speak immediately — do not call any tools before greeting."
-        )
-    else:
-        greeting_instructions = (
-            "This is a new caller. Give a warm, friendly greeting, introduce yourself "
-            "as their English practice tutor, ask for their name, and then ask for "
-            "their age and English level (beginner, intermediate, or advanced). "
-            "Speak immediately — do not call any tools before greeting."
+            tts=murf.TTS(
+                voice="Anisha",
+                style="Conversational",
+                tokenizer=tokenize.basic.SentenceTokenizer(min_sentence_len=1),
+                text_pacing=True,
+            ),
+            turn_detection=MultilingualModel(),
+            min_endpointing_delay=0.3,
+            max_endpointing_delay=1.5,
+            preemptive_generation=True,
         )
 
-    # A system prompt alone does not produce speech when the caller joins.
-    # generate_reply with a concrete instruction triggers immediate speech.
-    await session.generate_reply(instructions=greeting_instructions)
+        await session.start(
+            agent=Assistant(user_id=user_id, session_id=session_id),
+            room=ctx.room,
+            room_options=room_io.RoomOptions(
+                audio_input=room_io.AudioInputOptions(
+                    noise_cancellation=lambda params: noise_cancellation.BVC(),
+                ),
+            ),
+        )
+
+        participant = await ctx.wait_for_participant()
+        if participant and participant.identity:
+            user_id = participant.identity
+        logger.info("Caller identity resolved: %s", user_id)
+
+        caller_record = lookup_caller(user_id)
+
+        if caller_record:
+            name   = caller_record["name"]
+            level  = caller_record.get("current_level") or "unknown level"
+            topics = caller_record.get("topics_covered") or []
+            topics_str = ", ".join(topics) if topics else "various topics"
+            greeting_instructions = (
+                f"This is a returning caller. Their name is {name}, their current English level "
+                f"is {level}, and last time they practised: {topics_str}. "
+                f"Greet {name} warmly by name, briefly mention their level and last topics, "
+                "and ask if they would like to continue from where they left off. "
+                "Speak immediately — do not call any tools before greeting."
+            )
+        else:
+            greeting_instructions = (
+                "This is a new caller. Give a warm, friendly greeting, introduce yourself "
+                "as their English practice tutor, ask for their name, and then ask for "
+                "their age and English level (beginner, intermediate, or advanced). "
+                "Speak immediately — do not call any tools before greeting."
+            )
+
+        await session.generate_reply(instructions=greeting_instructions)
+    finally:
+        end_call_record(session_id)
 
 
 if __name__ == "__main__":

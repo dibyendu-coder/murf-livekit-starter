@@ -70,6 +70,26 @@ CREATE TABLE IF NOT EXISTS escalations (
 );
 """
 
+# ---------------------------------------------------------------------------
+# Call Analytics schema (Day 8)
+# ---------------------------------------------------------------------------
+
+_CREATE_CALL_ANALYTICS_SQL = """
+CREATE TABLE IF NOT EXISTS call_analytics (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id          TEXT UNIQUE NOT NULL,
+    learner_id          TEXT NOT NULL,
+    call_type           TEXT DEFAULT 'browser',
+    started_at          TEXT NOT NULL,   -- ISO-8601 UTC timestamp
+    ended_at            TEXT,            -- ISO-8601 UTC timestamp
+    duration            INTEGER DEFAULT 0, -- seconds
+    exercise_started    INTEGER DEFAULT 0, -- boolean 0 or 1
+    exercise_completed  INTEGER DEFAULT 0, -- boolean 0 or 1
+    feedback_given      INTEGER DEFAULT 0, -- boolean 0 or 1
+    outcome             TEXT DEFAULT 'IN_PROGRESS' -- IN_PROGRESS / SUCCESS / FAILED
+);
+"""
+
 _VALID_STATUSES = {"OPEN", "IN_PROGRESS", "RESOLVED"}
 
 
@@ -82,13 +102,14 @@ def init_db() -> None:
     """Create the database and all tables if they do not already exist.
 
     Safe to call multiple times (idempotent). Called once during agent prewarm.
-    Creates both the `callers` table and the `escalations` table (Day 7).
+    Creates `callers`, `escalations` (Day 7), and `call_analytics` (Day 8) tables.
     """
     logger.info("Initialising caller database at %s", _DB_PATH)
     with _connect() as conn:
         conn.execute(_CREATE_CALLERS_SQL)
         conn.execute(_CREATE_ESCALATIONS_SQL)
-    logger.info("Database ready (callers + escalations tables).")
+        conn.execute(_CREATE_CALL_ANALYTICS_SQL)
+    logger.info("Database ready (callers + escalations + call_analytics tables).")
 
 
 def lookup_caller(user_id: str) -> dict[str, Any] | None:
@@ -351,3 +372,198 @@ def _escalation_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
     except (json.JSONDecodeError, TypeError):
         d["agent_actions"] = []
     return d
+
+
+# ---------------------------------------------------------------------------
+# Call Analytics functions (Day 8)
+# ---------------------------------------------------------------------------
+
+
+def create_call_record(
+    session_id: str,
+    learner_id: str,
+    call_type: str = "browser",
+) -> dict[str, Any]:
+    """Create a new call analytics record when a session starts.
+
+    Sets outcome='IN_PROGRESS', exercise_started=0, exercise_completed=0, feedback_given=0.
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    try:
+        with _connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO call_analytics
+                    (session_id, learner_id, call_type, started_at, outcome,
+                     exercise_started, exercise_completed, feedback_given)
+                VALUES (?, ?, ?, ?, 'IN_PROGRESS', 0, 0, 0)
+                ON CONFLICT(session_id) DO UPDATE SET
+                    started_at = excluded.started_at,
+                    outcome = 'IN_PROGRESS'
+                """,
+                (session_id, learner_id, call_type, now),
+            )
+        logger.info("[ANALYTICS] Call started: session_id=%s learner_id=%s call_type=%s", session_id, learner_id, call_type)
+        return {"success": True, "session_id": session_id}
+    except Exception as exc:  # noqa: BLE001
+        logger.error("[ANALYTICS] Failed to create call record for %s: %s", session_id, exc, exc_info=True)
+        return {"success": False, "error": "Database error"}
+
+
+def mark_exercise_started(session_id: str) -> None:
+    """Mark exercise_started = 1 for the given call session."""
+    try:
+        with _connect() as conn:
+            conn.execute(
+                "UPDATE call_analytics SET exercise_started = 1 WHERE session_id = ?",
+                (session_id,),
+            )
+        logger.info("[ANALYTICS] Exercise started for session_id=%s", session_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("[ANALYTICS] Failed to mark exercise started for %s: %s", session_id, exc, exc_info=True)
+
+
+def mark_exercise_completed(session_id: str) -> None:
+    """Mark exercise_completed = 1 and feedback_given = 1 for the given call session."""
+    try:
+        with _connect() as conn:
+            conn.execute(
+                """
+                UPDATE call_analytics
+                SET exercise_completed = 1, feedback_given = 1
+                WHERE session_id = ?
+                """,
+                (session_id,),
+            )
+        logger.info("[ANALYTICS] Answer evaluated & feedback delivered for session_id=%s", session_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("[ANALYTICS] Failed to mark exercise completed for %s: %s", session_id, exc, exc_info=True)
+
+
+def end_call_record(session_id: str) -> dict[str, Any]:
+    """Finalise a call record when the call/session ends.
+
+    Calculates duration in seconds.
+    Sets outcome = 'SUCCESS' if exercise_completed == 1 AND feedback_given == 1,
+    otherwise sets outcome = 'FAILED'.
+    """
+    now_dt = datetime.now(timezone.utc)
+    now_str = now_dt.isoformat()
+
+    try:
+        with _connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM call_analytics WHERE session_id = ?", (session_id,)
+            ).fetchone()
+
+            if not row:
+                logger.warning("[ANALYTICS] Call record not found for session_id=%s when ending", session_id)
+                return {"success": False, "error": "Session not found"}
+
+            started_at_str = row["started_at"]
+            try:
+                started_dt = datetime.fromisoformat(started_at_str)
+                duration = max(0, int((now_dt - started_dt).total_seconds()))
+            except Exception:
+                duration = 0
+
+            exercise_completed = bool(row["exercise_completed"])
+            feedback_given = bool(row["feedback_given"])
+
+            outcome = "SUCCESS" if (exercise_completed and feedback_given) else "FAILED"
+
+            conn.execute(
+                """
+                UPDATE call_analytics
+                SET ended_at = ?,
+                    duration = ?,
+                    outcome = ?
+                WHERE session_id = ?
+                """,
+                (now_str, duration, outcome, session_id),
+            )
+
+        logger.info(
+            "[ANALYTICS] Call marked %s (session_id=%s, duration=%ds)",
+            outcome,
+            session_id,
+            duration,
+        )
+        return {"success": True, "outcome": outcome, "duration": duration}
+    except Exception as exc:  # noqa: BLE001
+        logger.error("[ANALYTICS] Failed to end call record for %s: %s", session_id, exc, exc_info=True)
+        return {"success": False, "error": "Database error"}
+
+
+def get_call_analytics() -> dict[str, Any]:
+    """Retrieve call metrics and recent call history for the Call Analytics Dashboard.
+
+    Returns:
+        {
+            "total_calls": int,
+            "successful_calls": int,
+            "failed_calls": int,
+            "success_rate": float,
+            "average_duration": float,
+            "browser_calls": int,
+            "sip_calls": int,
+            "recent_calls": list[dict]
+        }
+    """
+    try:
+        with _connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM call_analytics ORDER BY started_at DESC"
+            ).fetchall()
+
+        calls = [_call_row_to_dict(r) for r in rows]
+
+        total_calls = len(calls)
+        successful_calls = sum(1 for c in calls if c["outcome"] == "SUCCESS")
+        failed_calls = sum(1 for c in calls if c["outcome"] == "FAILED")
+        browser_calls = sum(1 for c in calls if c.get("call_type") == "browser")
+        sip_calls = sum(1 for c in calls if c.get("call_type") in ("sip", "outbound_sip"))
+
+        completed_calls = [c for c in calls if c["outcome"] in ("SUCCESS", "FAILED")]
+        if completed_calls:
+            success_rate = round((successful_calls / len(completed_calls)) * 100, 1)
+            total_duration = sum(c.get("duration", 0) for c in completed_calls)
+            average_duration = round(total_duration / len(completed_calls), 1)
+        else:
+            success_rate = 0.0
+            average_duration = 0.0
+
+        logger.info("[ANALYTICS] Dashboard updated (Total: %d, Success: %d, Failed: %d)", total_calls, successful_calls, failed_calls)
+
+        return {
+            "total_calls": total_calls,
+            "successful_calls": successful_calls,
+            "failed_calls": failed_calls,
+            "success_rate": success_rate,
+            "average_duration": average_duration,
+            "browser_calls": browser_calls,
+            "sip_calls": sip_calls,
+            "recent_calls": calls,
+        }
+    except Exception as exc:  # noqa: BLE001
+        logger.error("[ANALYTICS] Failed to get call analytics: %s", exc, exc_info=True)
+        return {
+            "total_calls": 0,
+            "successful_calls": 0,
+            "failed_calls": 0,
+            "success_rate": 0.0,
+            "average_duration": 0.0,
+            "browser_calls": 0,
+            "sip_calls": 0,
+            "recent_calls": [],
+        }
+
+
+def _call_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+    """Convert a call_analytics sqlite3.Row to a plain dictionary."""
+    d = dict(row)
+    d["exercise_started"] = bool(d.get("exercise_started"))
+    d["exercise_completed"] = bool(d.get("exercise_completed"))
+    d["feedback_given"] = bool(d.get("feedback_given"))
+    return d
+

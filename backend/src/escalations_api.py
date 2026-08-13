@@ -24,7 +24,12 @@ from dotenv import load_dotenv
 
 load_dotenv(".env.local")
 
-from database import init_db, list_escalations, update_escalation_status
+from database import (
+    init_db,
+    list_escalations,
+    update_escalation_status,
+    get_call_analytics,
+)
 
 try:
     from fastapi import FastAPI, HTTPException, Path as FPath
@@ -121,6 +126,12 @@ def patch_status(
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("error", "Update failed."))
     return {"success": True, "reference_id": reference_id, "status": body.status}
+
+
+@app.get("/api/analytics", summary="Get call analytics dashboard data")
+def get_analytics() -> dict:
+    """Return metrics and recent call history for Call Analytics Dashboard."""
+    return get_call_analytics()
 
 
 @app.get("/health", summary="Health check")

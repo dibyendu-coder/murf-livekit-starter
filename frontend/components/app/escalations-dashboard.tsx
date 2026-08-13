@@ -3,6 +3,7 @@
 import { useState, useTransition, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import {
+  Activity,
   AlertCircle,
   CheckCircle2,
   Clock,
@@ -364,6 +365,17 @@ export function EscalationsDashboard({
           </div>
 
           <div className="flex items-center gap-3">
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="gap-2 rounded-full border border-white/10 bg-white/5 text-white/60 hover:text-white"
+            >
+              <Link href="/analytics" className="flex items-center gap-1.5">
+                <Activity className="size-3.5 text-emerald-400" />
+                Call Analytics
+              </Link>
+            </Button>
             <Button
               variant="ghost"
               size="sm"

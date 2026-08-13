@@ -1,4 +1,3 @@
-import { Nunito } from 'next/font/google';
 import localFont from 'next/font/local';
 import { headers } from 'next/headers';
 import { ThemeProvider } from '@/components/app/theme-provider';
@@ -7,13 +6,8 @@ import { cn } from '@/lib/shadcn/utils';
 import { getAppConfig, getStyles } from '@/lib/utils';
 import '@/styles/globals.css';
 
-// Nunito — friendly, rounded, great for educational apps
-const nunito = Nunito({
-  variable: '--font-public-sans',
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  display: 'swap',
-});
+// Font variable for sans-serif text
+const nunitoVariable = '--font-public-sans';
 
 const commitMono = localFont({
   display: 'swap',
@@ -57,7 +51,6 @@ export default async function RootLayout({ children }: RootLayoutProps) {
       lang="en"
       suppressHydrationWarning
       className={cn(
-        nunito.variable,
         commitMono.variable,
         'scroll-smooth font-sans antialiased'
       )}

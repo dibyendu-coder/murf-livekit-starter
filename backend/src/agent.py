@@ -15,7 +15,7 @@ from livekit.agents import (
     tokenize,
     room_io,
 )
-from livekit.plugins import murf, silero, google, deepgram, noise_cancellation, openai
+from livekit.plugins import murf, silero, google, deepgram, noise_cancellation
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 from database import (
@@ -29,8 +29,10 @@ from database import (
     end_call_record,
 )
 from exercises import get_next_exercise as _get_next_exercise, evaluate_answer as _evaluate_answer
+from math_specialist import MathsSpecialistAssistant
 
 logger = logging.getLogger("agent")
+
 
 load_dotenv(".env.local")
 
@@ -199,7 +201,22 @@ NEVER include in the tool call:
   - Passwords, OTPs, PINs, API keys, authentication tokens
   - The full conversation transcript
   - Any sensitive personal information not needed by the teacher
+
+HANDOFF TOOL — MATHS PRACTICE SPECIALIST (DAY 9)
+You have a specialist handoff tool: `handoff_to_maths_specialist`.
+Call this tool IMMEDIATELY when the learner's request requires maths learning, solving, understanding, or maths practice (e.g. arithmetic, fractions, percentages, algebra, basic geometry).
+
+DO NOT use this tool for:
+  - English learning, grammar exercises, vocabulary, speaking practice, or comprehension
+  - Normal conversation or general tutoring requests already supported
+
+MANDATORY HANDOFF ANNOUNCEMENT:
+When the learner asks a maths question, YOU MUST SPEAK THIS EXACT ANNOUNCEMENT FIRST in your response before or as you execute `handoff_to_maths_specialist`:
+"I'll connect you to our Maths Practice Specialist, who can help you with this."
+Do not omit this announcement sentence under any circumstances!
 """
+
+
 
 
 class Assistant(Agent):
@@ -524,6 +541,81 @@ class Assistant(Agent):
                 "create_escalation_tool unexpected error: %s", exc, exc_info=True
             )
             return {"success": False, "error": "Unexpected error creating escalation."}
+
+    # ------------------------------------------------------------------
+    # Tool: hand off to Maths Practice Specialist (Day 9)
+    # ------------------------------------------------------------------
+
+    @function_tool
+    async def handoff_to_maths_specialist(
+        self,
+        context: RunContext,
+        maths_question: str,
+        topic: str | None = None,
+        language: str | None = None,
+    ) -> dict:
+        """Transfer the learner to the Maths Practice Specialist when the learner asks for help
+        solving, understanding, practicing, or learning a mathematics topic. Do not use this
+        tool for English learning, spoken-English practice, normal conversation, or requests
+        that the main Learning & Literacy agent can already handle.
+
+        Args:
+            maths_question: The learner's current maths question or request verbatim.
+            topic:          Specific maths topic if identified (e.g. "percentages", "fractions", "algebra").
+            language:       Learner's preferred language or mix (e.g. "Hindi-English").
+
+        Returns:
+            A dictionary with status and transferred context.
+        """
+        logger.info(
+            "handoff_to_maths_specialist called: user_id=%s topic=%s question=%r",
+            self._user_id,
+            topic,
+            maths_question,
+        )
+
+        try:
+            specialist_instructions = (
+                "ACT AS THE MATHS PRACTICE SPECIALIST AGENT NOW.\n"
+                f"The learner was just transferred to you with the question: '{maths_question}'.\n"
+                f"Topic: {topic or 'Mathematics'}.\n"
+                "Respond IMMEDIATELY as the Maths Practice Specialist:\n"
+                "1. Introduce yourself briefly: 'Hi! I'm your Maths Practice Specialist. I understand you'd like help with...'\n"
+                "2. Acknowledge the learner's exact question so they know context was transferred without repeating.\n"
+                "3. Provide a clear, step-by-step explanation or hint, and encourage them to attempt the next step.\n"
+                "4. LANGUAGE RULE: Default to English. Only reply in Hindi or Hindi-English code-mix if the learner explicitly asked in Hindi/code-mix."
+            )
+
+
+            # Perform agent update on session if session is available in context
+            session = getattr(context, "session", None)
+            if session:
+                specialist_agent = MathsSpecialistAssistant(
+                    user_id=self._user_id,
+                    session_id=self._session_id,
+                    initial_context=maths_question,
+                    language_preference=language,
+                )
+                session.update_agent(specialist_agent)
+
+            return {
+                "success": True,
+                "action": "handoff_to_maths_specialist",
+                "maths_question": maths_question,
+                "topic": topic,
+                "language": language or "English",
+                "learner_id": self._user_id,
+                "instructions_for_specialist": specialist_instructions,
+            }
+
+        except Exception as exc:  # noqa: BLE001
+            logger.error("handoff_to_maths_specialist error: %s", exc, exc_info=True)
+            return {
+                "success": False,
+                "error": "I couldn't connect you to the Maths Practice Specialist right now, but I can still try to help with the basics.",
+            }
+
+
 
 
 server = AgentServer()
